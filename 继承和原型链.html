@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>继承和原型链</title>
+</head>
+
+<body>
+  <a href="https://www.imooc.com/read/38/article/480" class="src"></a>
+  <script>
+    var rectangle = {
+      sizeType: '四边形'
+    }
+
+    /**
+     * 这部分代码等价于上面
+     * var rectangle = Object.create(Object.prototype, {
+     * sizeType: {
+     *    configurable: true,
+     *    enumerable: true,
+     *    value: '四边形',
+     *    writable: true
+     *   }
+     * })
+     */
+  </script>
+
+  <script>
+    var rectangle = {
+      sizeType: '四边形',
+      getSize: function () {
+        console.log(this.sizeType);
+      }
+    }
+
+    var square = Object.create(rectangle, {
+      sizeType: {
+        value: '六边形'
+      }
+    })
+
+    console.log(square)             // {sizeType: '六边形'}
+    console.log(square.sizeType);   // 六边形
+    console.log(square.getSize);    // 打印的是rectangle的getSize方法
+
+    // 所有可枚举的参数中是否有某个参数
+    console.log(rectangle.hasOwnProperty('getSize'));   // true
+    console.log(square.hasOwnProperty('getSize'));  // false
+
+    // 检查 squere 对象是否继承自 rectangle
+    console.log(rectangle.isPrototypeOf(square));   // true
+
+    // 如果指定的属性(getSize)在指定的对象(square)或其原型链中(square.prototype)
+    console.log('getSize' in square);        // true
+
+    // square 的隐式原型是 rectangle
+    console.log(square.__proto__ === rectangle)            // true
+    // square 的隐式原型的隐式原型 是Object.prototype
+    console.log(square.__proto__.__proto__ === Object.prototype); // true
+  </script>
+
+  <script>
+    function YourConstructor() {
+      console.log('1');
+
+    }
+
+    /**
+     * 这部分代码等价于上面
+     * YourConstructor.prototype = Object.create(Object.prototype, {
+     *   constructor:{
+     *     configurable: true,
+     *     enumerable: true,
+     *     value: YourConstructor,
+     *     writable: true
+     *   }
+     * })
+    */
+
+    console.log(YourConstructor.prototype);
+
+    console.log(YourConstructor.prototype.__proto__ === Object.prototype)
+  </script>
+
+  <script>
+    // 四边形
+    function Rectangle(length, width) {
+      this.length = length
+      this.width = width
+    }
+
+    // 获取面积
+    Rectangle.prototype.getArea = function () {
+      return this.length * this.width
+    }
+
+    // 获取尺寸信息
+    Rectangle.prototype.getSize = function () {
+      console.log(`Rectangle：${this.length} x ${this.width}，面积是：${this.getArea()}`);
+    }
+
+    // 正方形
+    function Square(size) {
+      this.length = size
+      this.width = size
+    }
+
+    // 为啥用 Square.prototype = new Rectangle() 而不用 Square.prototype = Rectangle.prototype
+    // 因为后者使两个构造函数的prototype指向了同一个对象，
+    // 当修改其中一个函数的prototype时，另一个函数也会收到影响
+    Square.prototype = new Rectangle()
+    // 因为 Square.prototype = new Rectangle() 这句代码
+    // Square.prototype.constructor变成了 Rectangle，重置回 Square 构造函数
+    Square.prototype.constructor = Square
+
+    Square.prototype.getSize = function () {
+      console.log(`Square：${this.length} x ${this.width}，面积是：${this.getArea()}`);
+    }
+
+    let rect = new Rectangle(5, 10)
+    let squa = new Square(6)
+
+    rect.getSize()
+    squa.getSize()
+  </script>
+
+  <script>
+    // 但是仍然有问题，当一个属性只存在于构造函数的protoype上，而构造函数本身没有时
+    // 该属性会在构造函数的所有实例间共享，其中一个实例修改了该属性，其他所有实例都会收到影响
+    // 以下代码是例子
+
+    // 四边形
+    function Rectangle(sizes) {
+      this.sizes = sizes
+    }
+
+    // 正方形
+    function Square() {
+
+    }
+
+    Square.prototype = new Rectangle([1, 2])
+    var squa1 = new Square()
+    console.log('squa1修改前', squa1.sizes); // [1, 2]
+    squa1.sizes.push(3)
+
+    console.log('squa1修改后', squa1.sizes); // [1, 2]
+
+    var squa2 = new Square()
+    console.log('squa2初始化', squa2.sizes);    
+  </script>
+
+  <script>
+    ; (function () {
+      // 构造函数窃取，基本思路是在子类型构造函数的内部调用父类构造函数
+      function getArea() {
+        return this.length * this.width
+      }
+
+      // 四边形
+      function Rectangle(length, width, testSize) {
+        this.length = length
+        this.width = width
+        this.testSize = testSize
+      }
+
+      Rectangle.prototype.getArea = getArea
+
+      Rectangle.prototype.getSize = function () {
+        console.log(`Rectangle：${this.length} x ${this.width}，面积：${this.getArea()}`);
+      }
+
+      // 正方形
+      function Square(size) {
+        Rectangle.call(this, size, size, [1, 2, 3])
+
+        this.getArea = getArea
+
+        this.getSize = function () {
+          console.log(`Rectangle：${this.length} x ${this.width}，面积：${this.getArea()}`);
+        }
+      }
+
+      let rect = new Rectangle(5, 10)
+      let squa = new Square(6)
+
+      rect.getSize()
+      squa.getSize()
+
+      // 以下为测试其中一个实例修改了某属性，其他所有实例是否都会改变
+      // 结果是不会，解决了上面所提出的问题 
+      var squa1 = new Square(7)
+      console.log('构造函数窃取squa1修改前', squa1.testSize);
+
+      squa1.testSize.push(4)
+      console.log('构造函数窃取squa1修改后', squa1.testSize);
+
+      var squa2 = new Square()
+      console.log('构造函数窃取squa2初始化', squa2.testSize);
+    })();    
+  </script>
+  <script>
+    // 以上的做法我们知道了可以避免引用了类型的属性被所有实例共享的问题，
+    // 缺点是方法都是在构造函数中定义，没次创建实例都会重新赋值一遍方法
+    // 以上方法被称为伪类继承或经典继承
+    ; (function () {
+      // 在经典模式的基础上发展出了伪经典继承(组合继承)
+      // 背后思想是使用原型链实现对原型属性和方法的继承，而通过借用构造函数来实现对实例属性的继承
+      // 这样既通过在原型上定义方法实现了函数复用，有能保证每个实例都有他自己的属性
+      function Rectangle(length, width) {
+        this.length = length
+        this.width = width
+        this.color = 'red'
+      }
+
+      // 获取面积
+      Rectangle.prototype.getArea = function () {
+        return this.length * this.width
+      }
+
+      // 获取尺寸信息
+      Rectangle.prototype.getSize = function () {
+        console.log(`Rectangle：${this.length} x ${this.width}，面积：${this.getArea()}`);
+      }
+
+      // 正方形
+      function Square(size) {
+        Rectangle.call(this, size, size)  // 第一次调用 Rectangle 函数
+        this.color = 'blue'
+      }
+
+      Square.prototype = new Rectangle()  // 第二次调用 Rectangle 函数
+      Square.prototype.constructor = Square
+
+      Square.prototype.getSize = function () {
+        console.log(`Square${this.length} x ${this.width}，面积：${this.getArea()}`);
+      }
+
+      var rect = new Rectangle(5, 10)
+      var squa = new Square(6)
+
+      rect.getSize()
+      squa.getSize()
+    })()
+  </script>
+  <script>
+      // 寄生组合继承
+      // 即通过借用构造函数来继承属性，通过原型链的混成方式来继承方法。
+      ; (function () {
+        // 实现继承逻辑
+        // 不必为了指定子类型的原型而调用构造函数，我们所需要的无非是超类型的一个副本而已。
+        // 本质上，就是使用寄生式继承来继承超类型的原型，然后将结果指定给子类型的原型。
+
+        /**
+         * 函数内部，第一步创建超类原型对象的一个副本，
+         * 
+         * 第二步为副本添加constructor属性，
+         * 使其指向subType，弥补因为重写原型而失去默认的constructor属性。
+         * 
+         * 最后一步，将副本赋值给子类型的原型。
+         * 
+         * 整个过程说的简单点，就是将超类原型对象的一个副本复制给子类的原型对象。
+         * 这样一来就可以避免继承超类的实例属性，也就是避免了在子类原型对象上创建多余的属性了。
+         */
+        function inheritPrototype(sub, sup) {
+          var prototype = Object.create(sup.prototype)   // 创建对象
+          prototype.constructor = sub                // 增强对象
+          sub.prototype = prototype                  // 指定对象
+        }
+
+        // 四边形
+        function Rectangle(length, width) {
+          this.length = length
+          this.width = width
+          this.color = 'red'
+        }
+
+        // 获取面积
+        Rectangle.prototype.getArea = function () {
+          return this.length * this.width
+        }
+
+        // 获取尺寸信息
+        Rectangle.prototype.getSize = function () {
+          console.log(`Rectangle：${this.length} x ${this.width}，面积：${this.getArea()}`)
+        }
+
+        // 正方形
+        function Square(size) {
+          Rectangle.call(this, size, size)   // 经典继承
+          this.color = 'blue'
+        }
+
+        // 实现继承
+        inheritPrototype(Square, Rectangle)
+
+        Square.prototype.getSize = function () {
+          console.log(`Square：${this.length} x ${this.width}，面积：${this.getArea()}`)
+        }
+
+        var rect = new Rectangle(5, 10)
+        var squa = new Square(6)
+
+        rect.getSize()
+        squa.getSize()
+      })()
+  </script>
+
+  <script>
+      ; (function () {
+        // 四边形
+        class Rectangle {
+          constructor(length, width) {
+            this.length = length
+            this.width = width
+            this.color = 'red'
+          }
+
+          // 获取面积
+          getArea() {
+            return this.length * this.width
+          }
+
+          // 获取尺寸信息
+          getSize() {
+            console.log(`Rectangle: ${this.length}x${this.width}，面积: ${this.getArea()}`)
+          }
+        }
+
+        class Square extends Rectangle {
+          constructor(size) {
+            super(size, size)
+            this.color = ''
+          }
+
+          getSize() {
+            console.log(`Square: ${this.length}x${this.width}，面积: ${this.getArea()}`)
+          }
+        }
+
+        var rect = new Rectangle(5, 10)
+        var squa = new Square(6)
+      })()
+  </script>
+</body>
+
+</html>
