@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>去小餐馆下馆子工厂模式</title>
+</head>
+
+<body>
+  <script>
+    // 工厂模式
+    // 访问中只需要知道产品名，就可以从工厂获得对应实例
+    // 访问者不关心实例创建过程
+
+    // 饭店方法
+    function restaurant(menu) {
+      switch (menu) {
+        case '鱼香肉丝':
+          return new YuXiangRouSi()
+        case '宫保鸡丁':
+          return new GongBaoJiDin()
+        default:
+          throw new Error('这个菜本店没有-。-')
+      }
+    }
+
+    /* 鱼香肉丝类 */
+    class YuXiangRouSi {
+      constructor() {
+        this.type = '鱼香肉丝'
+      }
+
+      eat() {
+        console.log(this.type + ' 真香~')
+      }
+    }
+
+    /* 宫保鸡丁类 */
+    class GongBaoJiDin {
+      constructor() {
+        this.type = '宫保鸡丁'
+      }
+
+      eat() {
+        console.log(this.type + ' 让我想起了外婆做的菜~')
+      }
+    }
+
+
+    const dish1 = restaurant('鱼香肉丝')
+    dish1.eat()
+    const dish2 = restaurant('红烧排骨')
+  </script>
+
+  <script>
+    ;
+    (function () {
+      // 以上代码是简单工厂模式，适用于产品种类比较少，创建逻辑不复杂的时候使用
+      // 工厂模式的本意是将实际创建的对象的过程推迟到子类中，一般用抽象类作为父类
+      // 创建过程由抽象类的子类来具体实现
+
+      // 饭店的方法
+      class Restaurant {
+        constructor() {
+          this.menuData = {}
+        }
+
+        // 创建菜品
+        getMenu(menu) {
+          if (!this.menuData[menu]) {
+            throw new Error('这个菜品本店没有')
+          }
+
+          const {
+            type,
+            message
+          } = this.menuData[menu]
+          return new Menu(type, message)
+        }
+
+        // 添加菜品种类
+        addMenu(menu, type, message) {
+          if (this.menuData[menu]) {
+            console.info('已经有这个菜了')
+            return
+          }
+          this.menuData[menu] = {
+            type,
+            message
+          }
+        }
+
+        // 移除菜品
+        removeMenu(menu) {
+          if (!this.menuData) return
+          delete this.menuData[menu]
+        }
+      }
+
+      // 菜品类
+      class Menu {
+        constructor(type, message) {
+          this.type = type
+          this.message = message
+        }
+
+        eat() {
+          console.log(this.type + this.message)
+        }
+      }
+
+      const restaurant = new Restaurant()
+      restaurant.addMenu('YuXiangRouSi', '鱼香肉丝', '真香')
+      restaurant.addMenu('GongBaoJiDin', '宫保鸡丁', '让我详情了外婆做的菜')
+
+      const dish1 = restaurant.getMenu('YuXiangRouSi')
+      dish1.eat()
+      const dish2 = restaurant.getMenu('HongShaoPaiGu')
+    })()
+  </script>
+</body>
+
+</html>
